@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createApp } from "../apps/server/src/app";
 import { git } from "../apps/server/src/git";
-it("authenticates API, validates origins and schemas, persists successful and failed operations with SSE", async () => {
+it("authenticates API, accepts arbitrary origins and validates schemas, persists successful and failed operations with SSE", async () => {
   const dir = await mkdtemp(join(tmpdir(), "gitui-api-"));
   const p = join(dir, "repo");
   await mkdir(p);
@@ -30,10 +30,10 @@ it("authenticates API, validates origins and schemas, persists successful and fa
       (
         await app.inject({
           url: "/api/repositories",
-          headers: { ...headers, origin: "https://evil.example" },
+          headers: { ...headers, origin: "https://example.com" },
         })
       ).statusCode,
-    ).toBe(403);
+    ).toBe(200);
     expect(
       (
         await app.inject({
@@ -42,11 +42,23 @@ it("authenticates API, validates origins and schemas, persists successful and fa
         })
       ).statusCode,
     ).toBe(403);
+    expect(
+      (
+        await app.inject({
+          url: "/api/repositories",
+          headers: {
+            ...headers,
+            origin: "https://example.com",
+            "sec-fetch-site": "cross-site",
+          },
+        })
+      ).statusCode,
+    ).toBe(403);
     const registered = (
       await app.inject({
         method: "POST",
         url: "/api/repositories",
-        headers,
+        headers: { ...headers, origin: "http://100.103.174.21:5173" },
         payload: { path: p },
       })
     ).json();

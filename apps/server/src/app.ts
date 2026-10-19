@@ -59,10 +59,6 @@ export async function createApp(options: {
     service = new GitService();
   const token = options.token ?? randomBytes(32).toString("hex");
   const port = options.port ?? 4317;
-  const origins = new Set([
-    `http://127.0.0.1:${port}`,
-    ...(process.env.NODE_ENV !== "production" ? ["http://127.0.0.1:5173"] : []),
-  ]);
   const jobs = new Map<
     string,
     { controller: AbortController; finished: boolean }
@@ -70,8 +66,6 @@ export async function createApp(options: {
   app.addHook("onRequest", async (req, reply) => {
     if (req.headers.host !== `127.0.0.1:${port}`)
       return reply.code(403).send({ error: "Invalid Host" });
-    if (req.headers.origin && !origins.has(req.headers.origin))
-      return reply.code(403).send({ error: "Invalid Origin" });
     if (req.headers["sec-fetch-site"] === "cross-site")
       return reply.code(403).send({ error: "Cross-site request blocked" });
     if (!req.url.startsWith("/api/")) return;
