@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createApp } from "../apps/server/src/app";
 import { git } from "../apps/server/src/git";
-it("authenticates API, accepts arbitrary origins and validates schemas, persists successful and failed operations with SSE", async () => {
+it("allows API access by default and supports explicit tokens with audit records and SSE", async () => {
   const dir = await mkdtemp(join(tmpdir(), "gitui-api-"));
   const p = join(dir, "repo");
   await mkdir(p);
@@ -12,15 +12,26 @@ it("authenticates API, accepts arbitrary origins and validates schemas, persists
   await git(p, ["config", "user.name", "Test"]);
   await git(p, ["config", "user.email", "test@example.invalid"]);
   await git(p, ["commit", "--allow-empty", "-m", "root"]);
-  const { app, store } = await createApp({
+  const { app: appWithToken } = await createApp({
     database: join(dir, "db.sqlite"),
     token: "secret",
+  });
+  const { app, store } = await createApp({
+    database: join(dir, "default.sqlite"),
   });
   const headers = { host: "127.0.0.1:4317", authorization: "Bearer secret" };
   try {
     expect(
       (
         await app.inject({
+          url: "/api/repositories",
+          headers: { host: headers.host },
+        })
+      ).statusCode,
+    ).toBe(200);
+    expect(
+      (
+        await appWithToken.inject({
           url: "/api/repositories",
           headers: { host: headers.host },
         })
@@ -111,6 +122,7 @@ it("authenticates API, accepts arbitrary origins and validates schemas, persists
     ).toBe(true);
   } finally {
     await app.close();
+    await appWithToken.close();
     await rm(dir, { recursive: true, force: true });
   }
 });

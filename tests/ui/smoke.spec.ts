@@ -1,10 +1,8 @@
 import { test, expect } from "@playwright/test";
-test("unlock, inspect, create branch, empty commit, review reset and browse operations", async ({
+test("inspect, create branch, empty commit, review reset and browse operations", async ({
   page,
 }) => {
   await page.goto("/");
-  await page.getByLabel("Access token").fill("smoke-token");
-  await page.getByRole("button", { name: "Unlock" }).click();
   await page
     .getByRole("button", { name: "smoke-repository", exact: true })
     .click();
@@ -47,20 +45,15 @@ test("unlock, inspect, create branch, empty commit, review reset and browse oper
   await expect(page.getByLabel("Directory path")).toBeVisible();
 });
 
-test("clones a local repository and recovers from a stale access token", async ({
+test("clones a local repository without an access token", async ({
   page,
   request,
 }) => {
-  await page.addInitScript(() =>
-    sessionStorage.setItem("gitui-token", "expired-token"),
-  );
   await page.goto("/");
-  await expect(page.getByLabel("Access token")).toBeVisible();
-  await page.getByLabel("Access token").fill("smoke-token");
-  await page.getByRole("button", { name: "Unlock" }).click();
-  const response = await request.get("/api/repositories", {
-    headers: { Authorization: "Bearer smoke-token" },
-  });
+  await expect(
+    page.getByRole("heading", { name: "Your repositories" }),
+  ).toBeVisible();
+  const response = await request.get("/api/repositories");
   const [repo] = await response.json();
   await page
     .getByRole("button", { name: "Clone repository", exact: true })
@@ -73,6 +66,4 @@ test("clones a local repository and recovers from a stale access token", async (
     .getByRole("button", { name: "smoke-repository-clone", exact: true })
     .click();
   await expect(page.getByText("Clean working tree")).toBeVisible();
-  await page.getByRole("button", { name: "Lock session", exact: true }).click();
-  await expect(page.getByLabel("Access token")).toBeVisible();
 });

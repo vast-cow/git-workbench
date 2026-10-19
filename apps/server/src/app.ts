@@ -1,7 +1,7 @@
 import Fastify from "fastify";
 import staticPlugin from "@fastify/static";
 import { Type, type Static } from "@sinclair/typebox";
-import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
+import { randomUUID, timingSafeEqual } from "node:crypto";
 import { homedir } from "node:os";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -57,7 +57,7 @@ export async function createApp(options: {
   const app = Fastify({ logger: false, bodyLimit: 100_000 });
   const store = openStore(options.database),
     service = new GitService();
-  const token = options.token ?? randomBytes(32).toString("hex");
+  const token = options.token;
   const port = options.port ?? 4317;
   const jobs = new Map<
     string,
@@ -69,16 +69,18 @@ export async function createApp(options: {
     if (req.headers["sec-fetch-site"] === "cross-site")
       return reply.code(403).send({ error: "Cross-site request blocked" });
     if (!req.url.startsWith("/api/")) return;
-    const supplied = String(req.headers.authorization ?? "").replace(
-      /^Bearer /,
-      "",
-    );
-    const a = Buffer.from(supplied),
-      b = Buffer.from(token);
-    if (a.length !== b.length || !timingSafeEqual(a, b))
-      return reply
-        .code(401)
-        .send({ error: "Enter the access token printed by the local server" });
+    if (token !== undefined) {
+      const supplied = String(req.headers.authorization ?? "").replace(
+        /^Bearer /,
+        "",
+      );
+      const a = Buffer.from(supplied),
+        b = Buffer.from(token);
+      if (a.length !== b.length || !timingSafeEqual(a, b))
+        return reply
+          .code(401)
+          .send({ error: "Enter the access token printed by the local server" });
+    }
   });
   app.addHook("onSend", async (_req, reply) => {
     reply.header("X-Content-Type-Options", "nosniff");

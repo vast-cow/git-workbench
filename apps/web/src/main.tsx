@@ -14,20 +14,15 @@ import type {
   Operation,
 } from "../../../packages/shared/src/index";
 import "./style.css";
-let token = sessionStorage.getItem("gitui-token") ?? "";
 async function api<T = any>(url: string, data?: unknown): Promise<T> {
-  const requestToken = token;
   const r = await fetch("/api" + url, {
     method: data === undefined ? "GET" : "POST",
     headers: {
-      Authorization: `Bearer ${requestToken}`,
       ...(data === undefined ? {} : { "Content-Type": "application/json" }),
     },
     body: data === undefined ? undefined : JSON.stringify(data),
   });
   const body = await r.json();
-  if (r.status === 401 && token === requestToken)
-    window.dispatchEvent(new Event("gitui-locked"));
   if (!r.ok) throw new Error(body.error ?? r.statusText);
   return body;
 }
@@ -58,8 +53,6 @@ function Dialog({
 }
 function App() {
   const cache = useQueryClient();
-  const [authenticated, setAuthenticated] = useState(!!token),
-    [access, setAccess] = useState("");
   const [selected, setSelected] = useState<number>(),
     [tab, setTab] = useState("Overview"),
     [error, setError] = useState(""),
@@ -88,24 +81,24 @@ function App() {
   const repos = useQuery<Repository[]>({
     queryKey: ["repositories"],
     queryFn: () => api("/repositories"),
-    enabled: authenticated,
+    enabled: true,
   });
   const repo = useQuery({
     queryKey: ["repo", selected],
     queryFn: () => api(`/repositories/${selected}`),
-    enabled: authenticated && !!selected,
+    enabled: !!selected,
     refetchInterval: 5000,
   });
   const history = useQuery<Operation[]>({
     queryKey: ["operations"],
     queryFn: () => api("/operations"),
-    enabled: authenticated,
+    enabled: true,
     refetchInterval: 3000,
   });
   const dirs = useQuery({
     queryKey: ["directories", directory],
     queryFn: () => api("/directories?path=" + encodeURIComponent(directory)),
-    enabled: authenticated && modal === "browse",
+    enabled: modal === "browse",
   });
   const visibleDirectories = (dirs.data?.directories ?? []).filter(
     (d: { name: string }) => showHidden || !d.name.startsWith("."),
@@ -115,20 +108,6 @@ function App() {
     setTarget("");
     setReview(undefined);
   }, [selected]);
-  useEffect(() => {
-    const lock = () => {
-      token = "";
-      sessionStorage.removeItem("gitui-token");
-      setAuthenticated(false);
-      setAccess("");
-      setSelected(undefined);
-      setModal(null);
-      setReview(undefined);
-      cache.clear();
-    };
-    window.addEventListener("gitui-locked", lock);
-    return () => window.removeEventListener("gitui-locked", lock);
-  }, [cache]);
   async function act(fn: () => Promise<unknown>) {
     setError("");
     setBusy(true);
@@ -143,7 +122,7 @@ function App() {
   }
   async function watch(id: string) {
     const response = await fetch(`/api/operations/${id}/events`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: {},
     });
     if (!response.ok || !response.body)
       throw new Error("Cannot open operation progress");
@@ -184,43 +163,6 @@ function App() {
       }),
     );
   }
-  if (!authenticated)
-    return (
-      <main className="max-w-xl mx-auto pt-24">
-        <h1>Git Workbench</h1>
-        <p className="muted my-4">
-          Local repository management. Enter the access token printed in your
-          server terminal.
-        </p>
-        <form
-          className="stack"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void act(async () => {
-              token = access.trim();
-              await api("/session");
-              sessionStorage.setItem("gitui-token", token);
-              setAuthenticated(true);
-            });
-          }}
-        >
-          <label htmlFor="access">Access token</label>
-          <input
-            id="access"
-            type="password"
-            value={access}
-            onChange={(e) => setAccess(e.target.value)}
-            autoComplete="off"
-          />
-          <Button disabled={busy}>Unlock</Button>
-        </form>
-        {error && (
-          <p role="alert" className="error">
-            {error}
-          </p>
-        )}
-      </main>
-    );
   const r = repo.data;
   const remoteNames = [
     ...new Set<string>(
@@ -262,11 +204,6 @@ function App() {
             Open repository
           </Button>
           <Button onClick={() => setModal("clone")}>Clone repository</Button>
-          <Button
-            onClick={() => window.dispatchEvent(new Event("gitui-locked"))}
-          >
-            Lock session
-          </Button>
         </div>
         <p className="text-xs opacity-60 mt-8">
           Git remains the source of truth.

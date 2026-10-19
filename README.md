@@ -12,7 +12,7 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-Open **http://127.0.0.1:5173**. Copy the access token from the backend terminal into the unlock screen. The token is generated at every server start and held in browser session storage. The backend listens on **127.0.0.1:4317**, with Vite proxying `/api`. Use the numeric loopback address, not `localhost`.
+Open **http://127.0.0.1:5173**. No access token is required by default. The backend listens on **127.0.0.1:4317**, with Vite proxying `/api`. Use the numeric loopback address, not `localhost`.
 
 Production:
 
@@ -21,7 +21,7 @@ pnpm build
 NODE_ENV=production pnpm start
 ```
 
-Open **http://127.0.0.1:4317** and enter the terminal token. Production serves Vite's built assets directly through Fastify. The server runs TypeScript through `tsx`; keep workspace dependencies installed. Set `PORT` to change the production port. Development expects the default backend port.
+Open **http://127.0.0.1:4317**. Production serves Vite's built assets directly through Fastify. The server runs TypeScript through `tsx`; keep workspace dependencies installed. Set `PORT` to change the production port. Development expects the default backend port.
 
 Metadata and audit records live under `$XDG_DATA_HOME/git-webui` (default `~/.local/share/git-webui`). Override with an absolute `GITUI_DATA_DIR`. The data directory is created with mode `0700`. No repositories are scanned or registered on startup. A failed clone leaves its newly created destination for inspection; remove it manually before retrying.
 
@@ -41,9 +41,9 @@ The supplied `.gitignore.example` contains generated-file exclusions for a root 
 
 - `packages/shared/src/index.ts`: shared operation/review/record types.
 - `apps/server/src/git.ts`: explicit Git operations, repository discovery, subprocess lifecycle, clean-tree checks, and per-common-Git-directory mutation queues. Git is always the source of truth; SQLite does not cache branch state.
-- `apps/server/src/app.ts`: TypeBox-validated Fastify routes, process-local expiring review tokens, authenticated SSE streams, operation lifecycle, and local browser protection. Every API requires a random bearer token, including read-only filesystem browsing. Origin headers are unrestricted; Host validation and Fetch Metadata checks remain enabled, and requests marked cross-site are rejected. The token is not accepted through query strings or cookies; malicious sites cannot supply it through a form.
+- `apps/server/src/app.ts`: TypeBox-validated Fastify routes, process-local expiring review tokens, SSE streams, operation lifecycle, and local browser protection. APIs do not require an access token by default; callers that pass an explicit `token` to `createApp` enable bearer-token enforcement. Origin headers are unrestricted; Host validation and Fetch Metadata checks remain enabled, and requests marked cross-site are rejected.
 - `apps/server/src/db.ts` and `migrations/0001.sql`: Drizzle schema plus the versioned, idempotent initial SQLite migration. WAL and a busy timeout support audit writes. Records left running after a server interruption are marked interrupted on restart. The UI shows the latest 200 records; older records remain in SQLite.
-- `apps/web/src`: React views, shared button and style utilities, query refresh, authenticated fetch-based SSE, and modal confirmations. API data is rendered as text, not HTML.
+- `apps/web/src`: React views, shared button and style utilities, query refresh, fetch-based SSE, and modal confirmations. API data is rendered as text, not HTML.
 
 Git commands use `spawn` with argument arrays, no shell, literal pathspecs, bounded output, timeouts, and process-group cancellation on Linux. Diff viewers disable external diff/textconv execution. Git hooks, signing, SSH and credential helpers remain the user's Git configuration; interactive terminal prompting is disabled. Signing/SSH requiring interactive input may fail or time out. URLs containing userinfo and common token query parameters are redacted from audit output. Do not put credentials in URLs or commit messages; use your credential helper instead. This application is for repositories/configuration you trust.
 
@@ -63,7 +63,7 @@ pnpm exec playwright install chromium
 pnpm test:ui
 ```
 
-Vitest uses disposable repositories and local bare remotes only. Tests cover cloning/detection/worktrees, branch and orphan creation, dirty-tree protection, ancestry/reset/backup/stale-review checks, ff-only merges, literal-path staging, empty commits, normal/lease/force/partial pushes, queue recovery, HTTP protection, audit records and SSE. Playwright starts its own server and temporary repository, then exercises unlock, branch creation, empty commit, reset confirmation with backup, audit browsing and the directory browser. Browser dependencies may need installation through your Linux distribution or `pnpm exec playwright install --with-deps chromium`.
+Vitest uses disposable repositories and local bare remotes only. Tests cover cloning/detection/worktrees, branch and orphan creation, dirty-tree protection, ancestry/reset/backup/stale-review checks, ff-only merges, literal-path staging, empty commits, normal/lease/force/partial pushes, queue recovery, HTTP protection, audit records and SSE. Playwright starts its own server and temporary repository, then exercises branch creation, empty commit, reset confirmation with backup, audit browsing and the directory browser. Browser dependencies may need installation through your Linux distribution or `pnpm exec playwright install --with-deps chromium`.
 
 ## Limits
 
@@ -71,5 +71,5 @@ Vitest uses disposable repositories and local bare remotes only. Tests cover clo
 - Repository status refreshes every five seconds; use Refresh after external activity. Ahead/behind uses the last fetched tracking refs.
 - History is limited to 100 commits per view; diffs have an 8 MB output limit. Large repositories/directories may be slow to inspect. No recursive filesystem discovery or symlink-directory traversal is performed.
 - Bare repositories can be clone/push sources but cannot be registered as working repositories. Submodules are shown through Git status; no dedicated submodule management is included.
-- Audit output retains the last 100 KB per operation. There is no audit export, pruning UI or credential vault. Restart invalidates pending confirmations and access tokens. Single backend process only.
+- Audit output retains the last 100 KB per operation. There is no audit export, pruning UI or credential vault. Restart invalidates pending confirmations. Single backend process only.
 - No rebase, cherry-pick, amend, conflict resolution, remote editing, code editing, force checkout, arbitrary Git command API, multi-user access, TLS or cloud hosting.
