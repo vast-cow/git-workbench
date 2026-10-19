@@ -3,17 +3,53 @@
   --color-background: var(--background);
   --color-primary: var(--primary);
   --color-primary-foreground: #fff;
-  --color-muted: #edf2f5;
-  --color-input: #cbd5e1;
-  --color-ring: #0d766b;
-  --color-destructive: #b42332;
+  --color-muted: var(--muted);
+  --color-input: var(--input-border);
+  --color-ring: var(--ring);
+  --color-destructive: var(--destructive);
 }
 :root {
+  color-scheme: light;
   --background: #fff;
-  --primary: #136e63;
+  --surface: #fff;
+  --foreground: #23313e;
+  --muted: #edf2f5;
+  --muted-foreground: #657682;
+  --border: #dee5eb;
+  --input-border: #cbd5e1;
+  --ring: #2563a6;
+  --primary: #2563a6;
+  --destructive: #b42332;
+  --error-background: #fff0f0;
+  --error-foreground: #9d2033;
+  --badge-background: #e5effb;
+  --badge-foreground: #24558a;
+  --item-border: #edf1f4;
+  --pre-background: #f3f5f7;
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
-  color: #23313e;
-  background: #fff;
+  color: var(--foreground);
+  background: var(--background);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --background: #111820;
+    --surface: #19232d;
+    --foreground: #e4ebf1;
+    --muted: #26333f;
+    --muted-foreground: #a2b0bc;
+    --border: #344350;
+    --input-border: #465563;
+    --ring: #69a8ed;
+    --primary: #367fc5;
+    --destructive: #f07886;
+    --error-background: #3a2026;
+    --error-foreground: #ff9aa6;
+    --badge-background: #20364d;
+    --badge-foreground: #9bc9f5;
+    --item-border: #2a3742;
+    --pre-background: #202b35;
+  }
 }
 body {
   margin: 0;
@@ -29,10 +65,11 @@ button {
 input:not([type="checkbox"]),
 select,
 textarea {
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--input-border);
   border-radius: 6px;
   padding: 8px 10px;
-  background: white;
+  background: var(--surface);
+  color: var(--foreground);
   max-width: 100%;
 }
 label {
@@ -58,7 +95,7 @@ pre {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   font-size: 12px;
-  background: #f3f5f7;
+  background: var(--pre-background);
   padding: 16px;
   border-radius: 6px;
   max-height: 440px;
@@ -73,9 +110,9 @@ code {
   min-height: 100vh;
 }
 aside {
-  background: #fff;
-  color: #23313e;
-  border-right: 1px solid #dee5eb;
+  background: var(--surface);
+  color: var(--foreground);
+  border-right: 1px solid var(--border);
   padding: 26px 18px;
 }
 aside button {
@@ -93,8 +130,8 @@ main {
   width: 100%;
 }
 .card {
-  background: white;
-  border: 1px solid #dee5eb;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 10px;
   padding: 22px;
   margin-top: 20px;
@@ -106,12 +143,12 @@ main {
   flex-wrap: wrap;
 }
 .muted {
-  color: #657682;
+  color: var(--muted-foreground);
   font-size: 13px;
 }
 .error {
-  background: #fff0f0;
-  color: #9d2033;
+  background: var(--error-background);
+  color: var(--error-foreground);
   padding: 14px;
   border-radius: 7px;
   margin: 12px 0;
@@ -122,16 +159,16 @@ main {
   gap: 8px;
   flex-wrap: wrap;
   margin-top: 24px;
-  border-bottom: 1px solid #d8e1e8;
+  border-bottom: 1px solid var(--border);
   padding-bottom: 12px;
 }
 .item {
   padding: 13px 0;
-  border-bottom: 1px solid #edf1f4;
+  border-bottom: 1px solid var(--item-border);
 }
 .badge {
-  background: #e1f2ed;
-  color: #176457;
+  background: var(--badge-background);
+  color: var(--badge-foreground);
   border-radius: 5px;
   padding: 3px 8px;
   font-size: 12px;
@@ -143,9 +180,11 @@ dialog {
   width: calc(100% - 40px);
   max-height: 85vh;
   overflow: auto;
-  border: 1px solid #cad5dd;
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 28px;
+  background: var(--surface);
+  color: var(--foreground);
   box-shadow: 0 20px 80px #0003;
 }
 dialog::backdrop {
