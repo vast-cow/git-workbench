@@ -113,6 +113,15 @@ export async function createApp(options: {
     { schema: { querystring: Type.Object({ path: Str }) } },
     (req) => browse(req.query.path),
   );
+  app.delete<{ Params: { id: number } }>(
+    "/api/repositories/:id",
+    { schema: { params: Id } },
+    async (req, reply) => {
+      const path = store.repo(req.params.id);
+      store.unregister(req.params.id);
+      return reply.code(200).send({ path, unregistered: true });
+    },
+  );
   app.get<{ Params: { id: number } }>(
     "/api/repositories/:id",
     { schema: { params: Id } },

@@ -48,6 +48,8 @@ export function openStore(path: string) {
         .where(eq(repositories.path, path))
         .get()!;
     },
+    unregister: (id: number) =>
+      db.delete(repositories).where(eq(repositories.id, id)).run().changes > 0,
     repo: (id: number) => {
       const r = db
         .select()

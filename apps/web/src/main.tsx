@@ -14,9 +14,13 @@ import type {
   Operation,
 } from "../../../packages/shared/src/index";
 import "./style.css";
-async function api<T = any>(url: string, data?: unknown): Promise<T> {
+async function api<T = any>(
+  url: string,
+  data?: unknown,
+  method?: "POST" | "DELETE",
+): Promise<T> {
   const r = await fetch("/api" + url, {
-    method: data === undefined ? "GET" : "POST",
+    method: method ?? (data === undefined ? "GET" : "POST"),
     headers: {
       ...(data === undefined ? {} : { "Content-Type": "application/json" }),
     },
@@ -181,14 +185,45 @@ function App() {
         <div className="text-xl font-semibold">◈ Git Workbench</div>
         <p className="text-xs opacity-60 mt-1 mb-8">LOCAL REPOSITORIES</p>
         {repos.data?.map((p) => (
-          <Button
-            key={p.id}
-            variant={p.id === selected ? "default" : "outline"}
-            className={p.id === selected ? "" : "text-slate-800"}
-            onClick={() => setSelected(p.id)}
-          >
-            {p.path.split("/").pop()}
-          </Button>
+          <div className="row repository-row" key={p.id}>
+            <Button
+              variant={p.id === selected ? "default" : "outline"}
+              className={p.id === selected ? "" : "text-slate-800"}
+              onClick={() => setSelected(p.id)}
+            >
+              {p.path.split("/").pop()}
+            </Button>
+            <details className="repository-menu">
+              <summary aria-label={`Menu for ${p.path.split("/").pop()}`}>
+                ⋯
+              </summary>
+              <div className="repository-menu-items">
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.currentTarget.closest("details")?.removeAttribute("open");
+                    if (
+                      !window.confirm(
+                        `Unregister ${p.path}? The folder and its files will be kept.`,
+                      )
+                    )
+                      return;
+                    void act(async () => {
+                      await api(`/repositories/${p.id}`, undefined, "DELETE");
+                      if (selected === p.id) {
+                        setSelected(
+                          repos.data?.find((candidate) => candidate.id !== p.id)?.id,
+                        );
+                      }
+                      await cache.invalidateQueries({ queryKey: ["repositories"] });
+                    });
+                  }}
+                >
+                  Unregister
+                </button>
+              </div>
+            </details>
+          </div>
         ))}
         {!repos.data?.length && (
           <p className="text-sm opacity-70">No repositories registered.</p>
