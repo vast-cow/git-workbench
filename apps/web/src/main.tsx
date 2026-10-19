@@ -66,6 +66,7 @@ function App() {
     [busy, setBusy] = useState(false);
   const [modal, setModal] = useState<"browse" | "clone" | null>(null),
     [directory, setDirectory] = useState("/"),
+    [showHidden, setShowHidden] = useState(false),
     [cloneUrl, setCloneUrl] = useState(""),
     [destination, setDestination] = useState("");
   const [name, setName] = useState(""),
@@ -106,6 +107,9 @@ function App() {
     queryFn: () => api("/directories?path=" + encodeURIComponent(directory)),
     enabled: authenticated && modal === "browse",
   });
+  const visibleDirectories = (dirs.data?.directories ?? []).filter(
+    (d: { name: string }) => showHidden || !d.name.startsWith("."),
+  );
   useEffect(() => {
     setRemotes([]);
     setTarget("");
@@ -248,6 +252,7 @@ function App() {
           <Button
             onClick={() => {
               setModal("browse");
+              setShowHidden(false);
               void act(async () => {
                 const s = await api("/session");
                 setDirectory(s.home);
@@ -750,7 +755,22 @@ function App() {
                 defaultValue={directory}
               />
               <Button>Browse</Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setModal(null)}
+              >
+                Cancel
+              </Button>
             </form>
+            <label className="row my-4">
+              <input
+                type="checkbox"
+                checked={showHidden}
+                onChange={(e) => setShowHidden(e.target.checked)}
+              />
+              Show hidden files
+            </label>
             {dirs.isLoading && <p>Loading directories…</p>}
             {dirs.error && <p className="error">{String(dirs.error)}</p>}
             {dirs.data && (
@@ -778,7 +798,7 @@ function App() {
                   </Button>
                 </div>
                 <p className="muted break-all">{dirs.data.path}</p>
-                {dirs.data.directories.map((d: any) => (
+                {visibleDirectories.map((d: any) => (
                   <div className="item" key={d.path}>
                     <Button
                       variant="outline"
@@ -791,7 +811,7 @@ function App() {
                     )}
                   </div>
                 ))}
-                {!dirs.data.directories.length && <p>No subdirectories.</p>}
+                {!visibleDirectories.length && <p>No subdirectories.</p>}
               </>
             )}
           </Dialog>
