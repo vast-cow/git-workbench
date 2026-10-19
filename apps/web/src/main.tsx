@@ -59,6 +59,7 @@ function App() {
     [busy, setBusy] = useState(false);
   const [modal, setModal] = useState<"browse" | "clone" | null>(null),
     [directory, setDirectory] = useState("/"),
+    [cloneDirectory, setCloneDirectory] = useState("/"),
     [showHidden, setShowHidden] = useState(false),
     [cloneUrl, setCloneUrl] = useState(""),
     [destination, setDestination] = useState("");
@@ -95,10 +96,12 @@ function App() {
     enabled: true,
     refetchInterval: 3000,
   });
+  const browseDirectory = modal === "clone" ? cloneDirectory : directory;
   const dirs = useQuery({
-    queryKey: ["directories", directory],
-    queryFn: () => api("/directories?path=" + encodeURIComponent(directory)),
-    enabled: modal === "browse",
+    queryKey: ["directories", browseDirectory],
+    queryFn: () =>
+      api("/directories?path=" + encodeURIComponent(browseDirectory)),
+    enabled: modal === "browse" || modal === "clone",
   });
   const visibleDirectories = (dirs.data?.directories ?? []).filter(
     (d: { name: string }) => showHidden || !d.name.startsWith("."),
@@ -203,7 +206,17 @@ function App() {
           >
             Open repository
           </Button>
-          <Button onClick={() => setModal("clone")}>Clone repository</Button>
+          <Button
+            onClick={() => {
+              setModal("clone");
+              setShowHidden(false);
+              void api("/session")
+                .then((session) => setCloneDirectory(session.home))
+                .catch((e) => setError(String(e)));
+            }}
+          >
+            Clone repository
+          </Button>
         </div>
         <p className="text-xs opacity-60 mt-8">
           Git remains the source of truth.
@@ -785,6 +798,77 @@ function App() {
                   required
                 />
               </label>
+              <section className="card">
+                <h3>Choose destination folder</h3>
+                <form
+                  className="row"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const form = new FormData(e.currentTarget);
+                    setCloneDirectory(String(form.get("clone-path")));
+                  }}
+                >
+                  <input
+                    aria-label="Clone destination folder path"
+                    name="clone-path"
+                    key={cloneDirectory}
+                    defaultValue={cloneDirectory}
+                  />
+                  <Button>Browse</Button>
+                </form>
+                <label className="row my-4">
+                  <input
+                    type="checkbox"
+                    checked={showHidden}
+                    onChange={(e) => setShowHidden(e.target.checked)}
+                  />
+                  Show hidden files
+                </label>
+                {dirs.isLoading && <p>Loading directories…</p>}
+                {dirs.error && <p className="error">{String(dirs.error)}</p>}
+                {dirs.data && (
+                  <>
+                    <div className="row my-4">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setCloneDirectory(dirs.data.parent)}
+                      >
+                        Parent directory
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          const folder = cloneUrl
+                            .replace(/[?#].*$/, "")
+                            .split(/[/:]/)
+                            .pop()
+                            ?.replace(/\.git$/, "") || "repository";
+                          setDestination(
+                            `${cloneDirectory.replace(/\/$/, "")}/${folder}`,
+                          );
+                        }}
+                      >
+                        Use this folder
+                      </Button>
+                    </div>
+                    <p className="muted break-all">{dirs.data.path}</p>
+                    {visibleDirectories.map((d: any) => (
+                      <div className="item" key={d.path}>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setCloneDirectory(d.path)}
+                        >
+                          {d.name}
+                        </Button>
+                      </div>
+                    ))}
+                    {!visibleDirectories.length && <p>No subdirectories.</p>}
+                  </>
+                )}
+              </section>
               <p className="muted">
                 The parent must exist. An existing destination is never reused.
                 Your existing Git/SSH credentials are used.
