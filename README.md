@@ -85,7 +85,7 @@ After installing dependencies, run from the repository root:
 npx --yes pnpm@10.28.2 dev
 ```
 
-Open **http://127.0.0.1:5173**. The backend listens on **127.0.0.1:4317**, with Vite proxying `/api`. Development expects the default backend port. After changing the source, rebuild before using the production start command.
+Open **http://127.0.0.1:5173** locally, or **http://<server-ip>:5173** from another device. Vite listens on **0.0.0.0:5173** by default. The backend listens on **127.0.0.1:4317**, with Vite proxying `/api`. Development expects the default backend port. After changing the source, rebuild before using the production start command.
 
 ## Workflows
 
