@@ -2,30 +2,90 @@
 
 A single-user Linux Git management UI. React/TypeScript, Vite, Tailwind, a shadcn-style Radix Button, and TanStack Query provide the frontend; Fastify, TypeBox, Git CLI, SQLite, and Drizzle provide the backend. No hosted service or credential database is needed.
 
-## Run on Linux
+## Install and run on Linux with npx
 
-Prerequisites: Git, Node.js 24 LTS, pnpm 10, and a browser. Configure your Git author identity and SSH keys/credential helper as usual. SQLite's native module normally installs a prebuilt binary; platforms without one need Python 3, make, and a C++ compiler.
+Requirements: Git, Node.js **24.x**, and a browser. Use `npx` (included with npm) to run the pinned pnpm version; a global pnpm installation is unnecessary. This repository is a private workspace with no executable `bin` entry, so the commands below install and run a local checkout through pnpm, rather than downloading Git Workbench as a standalone npm CLI.
 
-```sh
-npm install --global pnpm@10.28.2
-pnpm install --frozen-lockfile
-pnpm dev
-```
+### 1. Install Node.js 24
 
-Open **http://127.0.0.1:5173**. No access token is required by default. The backend listens on **127.0.0.1:4317**, with Vite proxying `/api`. Use the numeric loopback address, not `localhost`.
-
-Production:
+On Debian/Ubuntu, install Git and curl first (use your distribution's package manager on other Linux systems):
 
 ```sh
-pnpm build
-NODE_ENV=production pnpm start
+sudo apt update
+sudo apt install -y git curl ca-certificates
 ```
 
-Open **http://127.0.0.1:4317**. Production serves Vite's built assets directly through Fastify. The server runs TypeScript through `tsx`; keep workspace dependencies installed. Set `PORT` to change the production port. Development expects the default backend port.
+Install [nvm](https://github.com/nvm-sh/nvm#installing-and-updating) in Bash, then install and select Node.js 24:
 
-Metadata and audit records live under `$XDG_DATA_HOME/git-webui` (default `~/.local/share/git-webui`). Override with an absolute `GITUI_DATA_DIR`. The data directory is created with mode `0700`. No repositories are scanned or registered on startup. A failed clone leaves its newly created destination for inspection; remove it manually before retrying.
+```sh
+curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.8/install.sh | bash
+export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || printf %s "${XDG_CONFIG_HOME}/nvm")"
+[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+nvm install 24
+nvm alias default 24
+nvm use 24
+node --version
+npm --version
+npx --version
+```
 
-The supplied `.gitignore.example` contains generated-file exclusions for a root `.gitignore` when setting up a checkout. The pre-existing root `.gitignore` in the implementation environment was read-only and was left unchanged.
+`node --version` should print `v24.x.x`. The project requires `>=24 <25`; use `24` explicitly instead of an unpinned latest release. See the [Node.js download page](https://nodejs.org/en/download) for other installation methods. If nvm is already installed in a custom directory, load that installation instead of resetting `NVM_DIR`. In a new terminal, run `nvm use 24` if another Node.js version is active.
+
+### 2. Install dependencies and build
+
+Clone or download this repository and open a terminal in its root directory (the directory containing `package.json` and `pnpm-workspace.yaml`). Then run:
+
+```sh
+npx --yes pnpm@10.28.2 install --frozen-lockfile
+npx --yes pnpm@10.28.2 build
+```
+
+[npx](https://docs.npmjs.com/cli/v11/commands/npx/) downloads pnpm into npm's cache when needed; pnpm installs the workspace dependencies locally. `--yes` accepts npx's package installation prompt. Initial setup requires internet access.
+
+SQLite's native module normally installs a prebuilt binary. If none is available for your platform, install Python 3, make, and a C++ compiler, then retry the dependency installation. On Debian/Ubuntu:
+
+```sh
+sudo apt install -y python3 build-essential
+npx --yes pnpm@10.28.2 install --frozen-lockfile
+```
+
+### 3. Start Git Workbench
+
+Configure your Git author identity and SSH keys/credential helper as usual, then run from the repository root:
+
+```sh
+NODE_ENV=production npx --yes pnpm@10.28.2 start
+```
+
+Open **http://127.0.0.1:4317**. No access token is required by default. Use the numeric loopback address, not `localhost`. Stop the server with **Ctrl+C**; use the same command to start it again. Keep the checkout, built frontend assets, and workspace dependencies installed: the server runs TypeScript through `tsx` and serves the built frontend through Fastify.
+
+To use a different port:
+
+```sh
+PORT=4320 NODE_ENV=production npx --yes pnpm@10.28.2 start
+```
+
+Open **http://127.0.0.1:4320** for this example.
+
+### Data storage
+
+Metadata and audit records live under `$XDG_DATA_HOME/git-webui` (default `~/.local/share/git-webui`). Override with an absolute `GITUI_DATA_DIR`, for example:
+
+```sh
+GITUI_DATA_DIR="$HOME/.local/share/git-workbench" NODE_ENV=production npx --yes pnpm@10.28.2 start
+```
+
+The data directory is created with mode `0700`. No repositories are scanned or registered on startup. A failed clone leaves its newly created destination for inspection; remove it manually before retrying.
+
+## Development
+
+After installing dependencies, run from the repository root:
+
+```sh
+npx --yes pnpm@10.28.2 dev
+```
+
+Open **http://127.0.0.1:5173**. The backend listens on **127.0.0.1:4317**, with Vite proxying `/api`. Development expects the default backend port. After changing the source, rebuild before using the production start command.
 
 ## Workflows
 
@@ -55,15 +115,17 @@ Push review binds the local HEAD, branch, mode, selected remotes, push URLs and 
 
 ## Validation
 
+Run from the repository root after installing dependencies:
+
 ```sh
-pnpm check
-pnpm test
-pnpm build
-pnpm exec playwright install chromium
-pnpm test:ui
+npx --yes pnpm@10.28.2 check
+npx --yes pnpm@10.28.2 test
+npx --yes pnpm@10.28.2 build
+npx --yes pnpm@10.28.2 exec playwright install chromium
+npx --yes pnpm@10.28.2 test:ui
 ```
 
-Vitest uses disposable repositories and local bare remotes only. Tests cover cloning/detection/worktrees, branch and orphan creation, dirty-tree protection, ancestry/reset/backup/stale-review checks, ff-only merges, literal-path staging, empty commits, normal/lease/force/partial pushes, queue recovery, HTTP protection, audit records and SSE. Playwright starts its own server and temporary repository, then exercises branch creation, empty commit, reset confirmation with backup, audit browsing and the directory browser. Browser dependencies may need installation through your Linux distribution or `pnpm exec playwright install --with-deps chromium`.
+Vitest uses disposable repositories and local bare remotes only. Tests cover cloning/detection/worktrees, branch and orphan creation, dirty-tree protection, ancestry/reset/backup/stale-review checks, ff-only merges, literal-path staging, empty commits, normal/lease/force/partial pushes, queue recovery, HTTP protection, audit records and SSE. Playwright starts its own server and temporary repository, then exercises branch creation, empty commit, reset confirmation with backup, audit browsing and the directory browser. Browser dependencies may need installation through your Linux distribution or `npx --yes pnpm@10.28.2 exec playwright install --with-deps chromium`.
 
 ## Limits
 
